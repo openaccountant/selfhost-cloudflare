@@ -1,0 +1,25 @@
+name: Build image
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the sandbox image
+        run: docker build -t oa-selfhost .
+      - name: wilson runs and the prebuilt dashboard is present
+        run: |
+          WANT=$(sed -n 's/^ARG WILSON_VERSION=//p' Dockerfile)
+          GOT=$(docker run --rm --entrypoint wilson -e OA_SECRET_BACKEND=none oa-selfhost --version | tail -1)
+          echo "want $WANT, got $GOT"
+          test "$GOT" = "$WANT"
+          docker run --rm --entrypoint sh oa-selfhost -c 'test -f /opt/wilson/src/dashboard/ui/dist/index.html && ls /opt/wilson/src/dashboard/ui/dist/_app | head -3'
