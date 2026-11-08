@@ -1,0 +1,5 @@
+# Optional secrets. Set with `npx wrangler secret put <NAME>` (or in the dashboard).
+# They are passed into YOUR sandbox so wilson can call a cloud model. Leave unset to use
+# wilson without cloud AI.
+ANTHROPIC_API_KEY=""
+OPENAI_API_KEY=""

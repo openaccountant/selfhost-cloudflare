@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Open Accountant terminal</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css" integrity="sha384-tStR1zLfWgsiXCF3IgfB3lBa8KmBe/lG287CL9WCeKgQYcp1bjb4/+mwN6oti4Co" crossorigin="anonymous" />
+  <link rel="icon" href="/_oa/oval-a.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root { --money: #176b36; --money-bright: #3cda60; --ledger: #20251f; --ink: #5b6057; --carbon: #d8dbcf; --slate: #fffef8; --void: #f8f9ed; --screen: #171c24; --screen-line: #363c40; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--void); color: var(--ledger); font: 15px/1.5 "DM Sans", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    body { display: flex; flex-direction: column; }
+    header { height: 64px; flex: none; display: flex; gap: 16px; align-items: center; padding: 0 16px; border-bottom: 1px solid var(--carbon); flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: 12px; color: var(--ledger); text-decoration: none; }
+    .brand img { width: 28px; height: 40px; mix-blend-mode: multiply; }
+    .brand span { font-size: 21px; font-weight: 600; letter-spacing: -.035em; }
+    .meta { color: var(--ink); font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .btn-outline { background: var(--slate); color: var(--ledger); border: 1px solid var(--carbon); font: 500 14px "DM Sans", sans-serif; padding: 7px 14px; border-radius: 4px; cursor: pointer; text-decoration: none; }
+    .btn-cta { background: var(--money-bright); color: var(--ledger); font-weight: 600; font-size: 14px; padding: 8px 16px; border-radius: 6px; text-decoration: none; }
+    :focus-visible { outline: 2px solid var(--money); outline-offset: 2px; }
+    .card { flex: 1; min-height: 0; margin: 16px; display: flex; flex-direction: column; background: var(--screen); border: 1px solid var(--screen-line); border-radius: 8px; overflow: hidden; box-shadow: 0 24px 60px #29341c20; }
+    .card-title { padding: 11px 18px; color: #e9eddf; font-size: 12px; border-bottom: 1px solid var(--screen-line); }
+    #term { flex: 1; min-height: 0; padding: 8px 10px; }
+    @media (max-width: 640px) { .brand span { font-size: 17px; } .meta { display: none; } }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="brand" href="/" aria-label="Dashboard"><img src="/_oa/oval-a.png" alt="" width="28" height="40" /><span>Open Accountant</span></a>
+    <span class="meta" id="meta">loading…</span>
+    <button id="snap" class="btn-outline">Snapshot now</button>
+    <a class="btn-cta" href="/">Dashboard</a>
+  </header>
+  <section class="card"><div class="card-title">Wilson / Terminal</div><div id="term"></div></section>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js" integrity="sha384-J4qzUjBl1FxyLsl/kQPQIOeINsmp17OHYXDOMpMxlKX53ZfYsL+aWHpgArvOuof9" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js" integrity="sha384-XGqKrV8Jrukp1NITJbOEHwg01tNkuXr6uB6YEj69ebpYU3v7FvoGgEg23C1Gcehk" crossorigin="anonymous"></script>
+  <script type="module">
+    import { SandboxAddon } from "/_oa/sandbox-xterm-0.12.14.js";
+    const meta = document.getElementById("meta");
+    async function status() {
+      const s = await (await fetch("/_oa/api/status")).json();
+      meta.textContent = `${s.user ?? ""} · last snapshot: ${s.latestSnapshot ? new Date(s.latestSnapshot.uploaded).toLocaleString() + " (" + Math.round(s.latestSnapshot.bytes / 1024) + " KB)" : "none yet"}`;
+    }
+    document.getElementById("snap").onclick = async () => {
+      meta.textContent = "saving snapshot to your R2…";
+      await fetch("/_oa/api/snapshot", { method: "POST" });
+      status();
+    };
+    const term = new Terminal({ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13, theme: { background: "#171c24", foreground: "#e9eddf", cursor: "#3cda60" } });
+    const fit = new FitAddon.FitAddon();
+    term.loadAddon(fit);
+    const addon = new SandboxAddon({ getWebSocketUrl: ({ origin }) => `${origin}/_oa/api/terminal` });
+    term.loadAddon(addon);
+    term.open(document.getElementById("term"));
+    fit.fit();
+    new ResizeObserver(() => { try { fit.fit(); } catch {} }).observe(document.getElementById("term"));
+    addon.connect({ sandboxId: "owner" });
+    status();
+  </script>
+</body>
+</html>

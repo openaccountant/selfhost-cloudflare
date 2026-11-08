@@ -1,0 +1,43 @@
+{
+  // Open Accountant (wilson) on your own Cloudflare account.
+  // One persistent sandbox, data snapshots in your R2 bucket, Cloudflare Access required.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "open-accountant",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Served on workers.dev by default. Protect that hostname (or your custom domain) with
+  // a Cloudflare Access application; the Worker refuses to serve until you do.
+  "workers_dev": true,
+
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
+
+  "durable_objects": { "bindings": [{ "class_name": "OwnerSandbox", "name": "Sandbox" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["OwnerSandbox"] }],
+
+  "containers": [
+    {
+      "class_name": "OwnerSandbox",
+      "image": "./Dockerfile",
+      "instance_type": "basic",
+      // Exactly one owner sandbox. 1 leaves no headroom for a rollout, so 2.
+      "max_instances": 2,
+      "rollout_step_percentage": 100
+    }
+  ],
+
+  // Your data. Snapshots of ~/.openaccountant land in snapshots/ (latest.tgz + history).
+  "r2_buckets": [{ "binding": "DATA", "bucket_name": "open-accountant-data" }],
+
+  "observability": { "enabled": true },
+
+  "vars": {
+    // REQUIRED. From Zero Trust → Access → Applications → your app.
+    "ACCESS_TEAM_DOMAIN": "",   // e.g. "yourteam.cloudflareaccess.com"
+    "ACCESS_AUD": "",           // the application's Audience (AUD) tag
+    "SNAPSHOT_EVERY_MIN": "10",
+    "KEEP_SNAPSHOTS": "48",
+    "IDLE_SLEEP": "30m"
+  }
+}
